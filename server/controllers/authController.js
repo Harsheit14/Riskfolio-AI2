@@ -1,64 +1,118 @@
-// TODO: Implement actual authentication with bcrypt and JWT
-// For now, mock user registration and login
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import env from "../config/env.js";
+import * as userRepository from "../repositories/userRepository.js";
 
+// Email validation regex
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PASSWORD_MIN_LENGTH = 8;
+
+/**
+ * Register new user
+ */
 export async function register(req, res) {
   try {
     const { email, password } = req.body;
 
+    // Validate inputs
     if (!email || !password) {
       return res.status(400).json({
-        success: false,
-        message: "Email and password are required",
+        error: "Email and password are required",
       });
     }
 
-    // TODO: Hash password, save to database, return user
-    // TODO: Generate JWT token
+    // Validate email format
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({
+        error: "Invalid email format",
+      });
+    }
 
-    res.status(201).json({
-      success: true,
+    // Validate password strength
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      return res.status(400).json({
+        error: `Password must be at least ${PASSWORD_MIN_LENGTH} characters`,
+      });
+    }
+
+    // Check if user already exists
+    const existingUser = await userRepository.findUserByEmail(email);
+    if (existingUser) {
+      return res.status(409).json({
+        error: "User with this email already exists",
+      });
+    }
+
+    // Hash password
+    const saltRounds = 12;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    // Create user
+    const newUser = await userRepository.createUser(email, passwordHash);
+
+    console.log("[AUTH] User registered:", newUser.email);
+
+    return res.status(201).json({
       data: {
-        id: 1,
-        email,
-        token: "mock-jwt-token",
+        message: "User created successfully",
       },
-      message: "User registered successfully",
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
+    console.error("[AUTH] Registration error:", error.message);
+    return res.status(500).json({
+      error: "An error occurred during registration",
     });
   }
 }
 
+/**
+ * Login user
+ */
 export async function login(req, res) {
   try {
     const { email, password } = req.body;
 
+    // Validate inputs
     if (!email || !password) {
       return res.status(400).json({
-        success: false,
-        message: "Email and password are required",
+        error: "Email and password are required",
       });
     }
 
-    // TODO: Verify email and password against database
-    // TODO: Generate JWT token
+    // Find user by email
+    const user = await userRepository.findUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({
+        error: "Invalid email or password",
+      });
+    }
 
-    res.status(200).json({
-      success: true,
+    // Compare passwords
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        error: "Invalid email or password",
+      });
+    }
+
+    // Sign JWT
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      env.JWT_SECRET,
+      { expiresIn: env.JWT_EXPIRES_IN }
+    );
+
+    console.log("[AUTH] User logged in:", user.email);
+
+    return res.status(200).json({
       data: {
-        id: 1,
-        email,
-        token: "mock-jwt-token",
+        token,
       },
-      message: "Login successful",
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
+    console.error("[AUTH] Login error:", error.message);
+    return res.status(500).json({
+      error: "An error occurred during login",
     });
   }
 }

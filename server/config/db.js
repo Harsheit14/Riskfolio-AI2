@@ -1,25 +1,19 @@
 import pkg from "pg";
 const { Pool } = pkg;
 
-// 🔥 Hardcoded config (temporary but stable)
-const pool = new Pool({
-  user: "postgres",
-  host: "localhost",
-  database: "Crypto_db",
-  password: "harsh",
-  port: 5432,
-});
+const connectionString = process.env.DATABASE_URL || "postgresql://postgres:harsh@localhost:5432/Crypto_db";
 
-const connectDB = async () => {
+const pool = new Pool({ connectionString });
+
+export async function connectDB() {
   try {
     const client = await pool.connect();
-    console.log("✅ Connected to PostgreSQL database");
+    console.log("✅ Database connection successful");
     client.release();
   } catch (error) {
-    console.error("❌ Database connection failed:", error.message);
-    throw error;
+    console.error("❌ FATAL: Database connection failed:", error.message);
+    process.exit(1);
   }
-};
+}
 
-export default connectDB;
-export { pool };
+export default pool;

@@ -6,13 +6,12 @@ import * as assetRepository from "../repositories/assetRepository.js";
  */
 export async function createTransaction(req, res) {
   try {
-    // TODO: Extract userId from JWT token when auth is implemented
-    const userId = req.userId || "00000000-0000-0000-0000-000000000001"; // Mock for now
+    const userId = req.user.userId;
 
-    const { asset, type, quantity, price } = req.body;
+    let { asset, type, quantity, price } = req.body;
 
     // -------------------------
-    // VALIDATION
+    // VALIDATION & TYPE CONVERSION
     // -------------------------
     if (!asset || !type || quantity === undefined || price === undefined) {
       return res.status(400).json({
@@ -25,6 +24,18 @@ export async function createTransaction(req, res) {
       return res.status(400).json({
         success: false,
         message: "Type must be BUY or SELL",
+      });
+    }
+
+    // Convert to numbers
+    quantity = Number(quantity);
+    price = Number(price);
+
+    // Validate numbers
+    if (!Number.isFinite(quantity) || !Number.isFinite(price)) {
+      return res.status(400).json({
+        success: false,
+        message: "Quantity and price must be valid numbers",
       });
     }
 
@@ -75,8 +86,7 @@ export async function createTransaction(req, res) {
  */
 export async function getTransactions(req, res) {
   try {
-    // TODO: Extract userId from JWT token when auth is implemented
-    const userId = req.userId || "00000000-0000-0000-0000-000000000001"; // Mock for now
+    const userId = req.user.userId;
 
     const transactions = await transactionRepository.getTransactionsByUser(userId);
 
@@ -98,8 +108,7 @@ export async function getTransactions(req, res) {
  */
 export async function getTransactionById(req, res) {
   try {
-    // TODO: Extract userId from JWT token when auth is implemented
-    const userId = req.userId || "00000000-0000-0000-0000-000000000001"; // Mock for now
+    const userId = req.user.userId;
     const { id } = req.params;
 
     if (!id) {
@@ -136,8 +145,7 @@ export async function getTransactionById(req, res) {
  */
 export async function updateTransaction(req, res) {
   try {
-    // TODO: Extract userId from JWT token when auth is implemented
-    const userId = req.userId || "00000000-0000-0000-0000-000000000001"; // Mock for now
+    const userId = req.user.userId;
     const { id } = req.params;
     const { type, quantity, price } = req.body;
 
@@ -208,8 +216,7 @@ export async function updateTransaction(req, res) {
  */
 export async function deleteTransaction(req, res) {
   try {
-    // TODO: Extract userId from JWT token when auth is implemented
-    const userId = req.userId || "00000000-0000-0000-0000-000000000001"; // Mock for now
+    const userId = req.user.userId;
     const { id } = req.params;
 
     if (!id) {

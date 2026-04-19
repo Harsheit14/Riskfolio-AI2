@@ -1,17 +1,15 @@
 import express from "express";
 import * as transactionController from "../controllers/transactionController.js";
-import { pool } from "../config/db.js";
+import { authenticate } from "../middleware/authMiddleware.js";
+import { validate, createTransactionSchema, updateTransactionSchema } from "../middleware/validationMiddleware.js";
 
-console.log("POOL CONFIG CHECK:", pool.options);
 const router = express.Router();
 
-router.use((req, res, next) => {
-  console.log("TRANSACTION ROUTE HIT, userId:", req.userId);
-  next();
-});
+// Protect all transaction routes
+router.use(authenticate);
 
 // Create transaction (BUY/SELL)
-router.post("/", transactionController.createTransaction);
+router.post("/", validate(createTransactionSchema), transactionController.createTransaction);
 
 // Get all transactions for user
 router.get("/", transactionController.getTransactions);
@@ -20,7 +18,7 @@ router.get("/", transactionController.getTransactions);
 router.get("/:id", transactionController.getTransactionById);
 
 // Update transaction
-router.put("/:id", transactionController.updateTransaction);
+router.put("/:id", validate(updateTransactionSchema), transactionController.updateTransaction);
 
 // Delete transaction
 router.delete("/:id", transactionController.deleteTransaction);

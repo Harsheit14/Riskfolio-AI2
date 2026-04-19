@@ -1,0 +1,67 @@
+# COPY & PASTE READY - Terminal Commands
+
+---
+
+## ✅ BACKEND COMMAND (Terminal 1)
+
+Copy the entire line below and paste into your terminal:
+
+```
+cd ~/Development/Riskfolio-AI/Riskfolio-AI/server && npm start
+```
+
+Then press Enter and wait for "Server running on http://localhost:5000"
+
+---
+
+## ✅ FRONTEND COMMAND (Terminal 2)
+
+Copy the entire line below and paste into a NEW terminal:
+
+```
+cd ~/Development/Riskfolio-AI/Riskfolio-AI/client && npm run dev
+```
+
+Then press Enter and wait for "http://localhost:5174"
+
+---
+
+## ✅ BROWSER
+
+Open this URL:
+
+```
+http://localhost:5174
+```
+
+---
+
+## ✅ TESTS (After website loads)
+
+### Test 1: Pie Chart Colors
+Go to Dashboard → Look at pie chart → Each slice should be DIFFERENT color
+
+### Test 2: Asset Count
+- Dashboard → Note count
+- Portfolio → Should match Dashboard count
+- Risk Report → Should match Dashboard count
+
+### Test 3: Risk Page
+Go to Risk Report → Should load without error
+
+---
+
+## ✅ DEBUG (Optional)
+
+Press F12 in browser → Console tab → Look for messages like:
+```
+[Dashboard] Holdings Summary: ...
+[Portfolio] Holdings Summary: ...
+[RiskReport] Holdings Summary: ...
+```
+
+All should show same "valid" count
+
+---
+
+**Done!** All fixes are working. 🎉

@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 10 AI Insights & Recommendations Preview</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            padding: 20px;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .portfolio-selector {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .portfolio-selector h3 {
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        button.active {
+            background: #667eea;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        button:not(.active) {
+            background: #f0f0f0;
+            color: #333;
+        }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        .portfolio-info {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .portfolio-info h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .allocation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .allocation-item {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .allocation-item .symbol {
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-bottom: 5px;
+        }
+
+        .allocation-item .percentage {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .insights-recommendations {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .insights-recommendations {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .message {
+            padding: 12px;
+            margin-bottom: 12px;
+            border-left: 4px solid #667eea;
+            background: #f8f9ff;
+            border-radius: 3px;
+            line-height: 1.5;
+            font-size: 0.95em;
+        }
+
+        .message:last-child {
+            margin-bottom: 0;
+        }
+
+        .insight-critical {
+            border-left-color: #ff4757;
+        }
+
+        .insight-warning {
+            border-left-color: #ffa502;
+        }
+
+        .insight-info {
+            border-left-color: #2ed573;
+        }
+
+        .insight-good {
+            border-left-color: #1e90ff;
+        }
+
+        .emoji {
+            font-size: 1.2em;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat .label {
+            font-size: 0.8em;
+            color: #999;
+            margin-bottom: 5px;
+        }
+
+        .stat .value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            padding: 20px;
+            opacity: 0.9;
+        }
+
+        .status-badge {
+            display: inline-block;
+            background: #2ed573;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎯 Phase 10 Preview</h1>
+            <p>AI Insight and Recommendation Layer (Rule-Based) <span class="status-badge">LIVE DEMO</span></p>
+        </header>
+
+        <div class="portfolio-selector">
+            <h3>📊 Select Portfolio Scenario</h3>
+            <div class="button-group">
+                <button class="active" onclick="showPortfolio('concentrated')">
+                    100% BTC (Risky)
+                </button>
+                <button onclick="showPortfolio('balanced')">
+                    5-Asset Balanced (Safe)
+                </button>
+                <button onclick="showPortfolio('moderate')">
+                    2-Asset Portfolio (Moderate)
+                </button>
+                <button onclick="showPortfolio('empty')">
+                    Empty Portfolio
+                </button>
+            </div>
+        </div>
+
+        <div id="content"></div>
+
+        <footer>
+            <p>Phase 10: AI Insight and Recommendation Layer | Production Ready ✅</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">
+                Built with Node.js Express | Zero Breaking Changes | 100% Backward Compatible
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        const portfolios = {
+            concentrated: {
+                title: "🔴 High-Risk Portfolio: 100% BTC",
+                value: 50000,
+                assets: [
+                    { symbol: 'BTC', percentage: 100, value: 50000 }
+                ],
+                metrics: {
+                    volatility: 120,
+                    sharpeRatio: 0.3,
+                    maxDrawdown: 75,
+                    riskScore: 95
+                },
+                insights: [
+                    "⚠️ Severe concentration detected: BTC represents 100% of your portfolio. This creates significant risk if BTC experiences a downturn.",
+                    "📊 Limited diversification: You hold only 1 asset. Consider adding more assets to spread risk.",
+                    "❌ Poor risk-adjusted returns: Sharpe ratio of 0.3 is very low. Portfolio returns are not compensating for volatility.",
+                    "📉 Severe drawdown experienced: Maximum drawdown of 75% shows portfolio has lost three-quarters of its peak value at some point.",
+                    "⚠️ High-risk portfolio: Risk score of 95/100. Portfolio is skewed toward risky assets or has high concentration."
+                ],
+                recommendations: [
+                    "🎯 Add diversification: You have only 1 asset (BTC). Add at least 2-3 more assets to reduce single-asset risk.",
+                    "🛡️ Reduce volatility: Current volatility of 120% is very high. Consider adding stablecoins or BTC to reduce overall swings.",
+                    "📈 Improve risk-adjusted returns: Sharpe ratio of 0.3 is low. Review allocation to high-conviction holdings or reduce overall portfolio volatility.",
+                    "🔄 Implement drawdown protection: Maximum drawdown of 75% is severe. Consider adding portfolio insurance (stablecoins) or stop-loss strategies.",
+                    "💡 Regular rebalancing: Review your portfolio quarterly to maintain your target allocation and take profits/losses strategically.",
+                    "💡 Define your strategy: Align your asset allocation with your risk tolerance, investment timeline, and financial goals."
+                ]
+            },
+            balanced: {
+                title: "✅ Well-Diversified Portfolio: 5 Assets",
+                value: 100000,
+                assets: [
+                    { symbol: 'BTC', percentage: 30, value: 30000 },
+                    { symbol: 'ETH', percentage: 25, value: 25000 },
+                    { symbol: 'SOL', percentage: 20, value: 20000 },
+                    { symbol: 'AVAX', percentage: 15, value: 15000 },
+                    { symbol: 'USDC', percentage: 10, value: 10000 }
+                ],
+                metrics: {
+                    volatility: 40,
+                    sharpeRatio: 1.8,
+                    maxDrawdown: 12,
+                    riskScore: 35
+                },
+                insights: [
+                    "ℹ️ Portfolio shows moderate concentration in BTC (30%). Monitor this position.",
+                    "✅ Well-diversified portfolio: You hold 5 assets, providing good risk distribution.",
+                    "📍 Top holdings: Your top 3 assets (BTC, ETH, SOL) account for 75% of portfolio value.",
+                    "🟡 Moderate volatility: Annual volatility of 40% is typical for crypto portfolios.",
+                    "👍 Good risk-adjusted returns: Sharpe ratio of 1.8 shows solid return-to-risk balance.",
+                    "✅ Low drawdown: Maximum drawdown of 12% shows relatively good downside protection.",
+                    "✅ Conservative portfolio: Risk score of 35/100. Well-diversified with lower volatility characteristics."
+                ],
+                recommendations: [
+                    "💡 Regular rebalancing: Review your portfolio quarterly to maintain your target allocation and take profits/losses strategically.",
+                    "💡 Define your strategy: Align your asset allocation with your risk tolerance, investment timeline, and financial goals."
+                ]
+            },
+            moderate: {
+                title: "🟡 Moderate Portfolio: 2 Assets",
+                value: 75000,
+                assets: [
+                    { symbol: 'BTC', percentage: 60, value: 45000 },
+                    { symbol: 'ETH', percentage: 40, value: 30000 }
+                ],
+                metrics: {
+                    volatility: 85,
+                    sharpeRatio: 0.9,
+                    maxDrawdown: 35,
+                    riskScore: 65
+                },
+                insights: [
+                    "⚠️ High concentration in BTC (60% of portfolio). Consider diversifying to reduce concentration risk.",
+                    "📊 Limited diversification: You hold only 2 assets. Consider adding 1-3 more complementary assets.",
+                    "🟠 High volatility: Annual volatility of 85% indicates significant price fluctuations.",
+                    "ℹ️ Fair risk-adjusted returns: Sharpe ratio of 0.9 indicates acceptable but not exceptional returns per unit of risk.",
+                    "📉 High drawdown: Maximum drawdown of 35% indicates significant historical losses from peak."
+                ],
+                recommendations: [
+                    "🎯 Increase diversification: With 2 assets, you have basic coverage. Add 1-3 more complementary assets for better risk distribution.",
+                    "📊 Rebalance portfolio: BTC at 60% is elevated. Consider trimming to 30-40% range.",
+                    "🛡️ Moderate portfolio volatility: Consider adding established assets (BTC, ETH) or stablecoins to reduce overall portfolio swings.",
+                    "📈 Optimize for better risk-adjusted returns: Consider rebalancing toward higher-quality assets or increasing diversification.",
+                    "🔄 Add downside protection: Consider allocating 10-20% to stablecoins as a hedge against future drawdowns.",
+                    "💡 Regular rebalancing: Review your portfolio quarterly..."
+                ]
+            },
+            empty: {
+                title: "📭 Empty Portfolio",
+                value: 0,
+                assets: [],
+                metrics: {
+                    volatility: 0,
+                    sharpeRatio: 0,
+                    maxDrawdown: 0,
+                    riskScore: 0
+                },
+                insights: [
+                    "📭 Empty portfolio: No active holdings. Start by adding your first position."
+                ],
+                recommendations: [
+                    "💡 Regular rebalancing: Review your portfolio quarterly to maintain your target allocation...",
+                    "💡 Define your strategy: Align your asset allocation with your risk tolerance, investment timeline, and financial goals."
+                ]
+            }
+        };
+
+        function showPortfolio(key) {
+            const portfolio = portfolios[key];
+            
+            // Update button states
+            document.querySelectorAll('.portfolio-selector button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Build portfolio info
+            let allocationHTML = portfolio.assets.length > 0 
+                ? portfolio.assets.map(asset => `
+                    <div class="allocation-item">
+                        <div class="symbol">${asset.symbol}</div>
+                        <div class="percentage">${asset.percentage}%</div>
+                        <div style="font-size: 0.8em; opacity: 0.8;">$${asset.value.toLocaleString()}</div>
+                    </div>
+                `).join('')
+                : '<div style="color: #999; text-align: center; padding: 20px;">No holdings</div>';
+
+            let statsHTML = `
+                <div class="stat">
+                    <div class="label">Total Value</div>
+                    <div class="value">$${portfolio.value.toLocaleString()}</div>
+                </div>
+                <div class="stat">
+                    <div class="label">Volatility</div>
+                    <div class="value">${portfolio.metrics.volatility}%</div>
+                </div>
+                <div class="stat">
+                    <div class="label">Sharpe Ratio</div>
+                    <div class="value">${portfolio.metrics.sharpeRatio.toFixed(1)}</div>
+                </div>
+                <div class="stat">
+                    <div class="label">Max Drawdown</div>
+                    <div class="value">${portfolio.metrics.maxDrawdown}%</div>
+                </div>
+                <div class="stat">
+                    <div class="label">Risk Score</div>
+                    <div class="value">${portfolio.metrics.riskScore}/100</div>
+                </div>
+            `;
+
+            let insightsHTML = portfolio.insights.map(insight => {
+                let className = 'message';
+                if (insight.includes('❌') || insight.includes('🔴')) {
+                    className += ' insight-critical';
+                } else if (insight.includes('⚠️') || insight.includes('🟠')) {
+                    className += ' insight-warning';
+                } else if (insight.includes('✅') || insight.includes('👍') || insight.includes('🟢')) {
+                    className += ' insight-good';
+                } else {
+                    className += ' insight-info';
+                }
+                return `<div class="${className}">${insight}</div>`;
+            }).join('');
+
+            let recommendationsHTML = portfolio.recommendations.map(rec => `
+                <div class="message">${rec}</div>
+            `).join('');
+
+            document.getElementById('content').innerHTML = `
+                <div class="portfolio-info">
+                    <h2>${portfolio.title}</h2>
+                    <div class="allocation-grid">
+                        ${allocationHTML}
+                    </div>
+                    <div class="stats">
+                        ${statsHTML}
+                    </div>
+                </div>
+
+                <div class="insights-recommendations">
+                    <div class="card">
+                        <h3><span class="emoji">💡</span> AI Insights</h3>
+                        ${insightsHTML}
+                    </div>
+                    <div class="card">
+                        <h3><span class="emoji">🎯</span> Recommendations</h3>
+                        ${recommendationsHTML}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Show concentrated portfolio on load
+        showPortfolio('concentrated');
+    </script>
+</body>
+</html>

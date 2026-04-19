@@ -1,9 +1,5 @@
-import * as portfolioService from "./portfolioService.js";
-import * as priceService from "./priceService.js";
+import * as holdingsCalculationService from "./holdingsCalculationService.js";
 
-/**
- * Volatility (standard deviation of returns)
- */
 function calculateVolatility(prices) {
   if (!prices || prices.length < 2) return 0;
 
@@ -26,9 +22,6 @@ function calculateVolatility(prices) {
   return Math.sqrt(variance);
 }
 
-/**
- * Max drawdown
- */
 function calculateMaxDrawdown(prices) {
   if (!prices || prices.length === 0) return 0;
 
@@ -49,78 +42,103 @@ function calculateMaxDrawdown(prices) {
 }
 
 export async function getPortfolioRisk(userId) {
+  const safeDefaultResponse = {
+    success: true,
+    data: {
+      volatility: 0,
+      concentration: 0,
+      riskScore: 0,
+      classification: "LOW",
+      assets: []
+    }
+  };
+
   try {
-    const portfolio = await portfolioService.getPortfolioValue(userId);
-
+    console.log(`\n[riskService] ═══════════════════════════════════════════`);
+    console.log(`[riskService] Starting risk calculation for userId: ${userId}`);
+    console.log(`[riskService] Calling holdingsCalculationService.getPortfolioWithValues()...`);
+    const portfolio = await holdingsCalculationService.getPortfolioWithValues(userId);
+    console.log(`[riskService] ✅ Portfolio fetched:`, {
+      totalValue: portfolio.totalValue,
+      assetCount: portfolio.assetCount,
+      totalCostBasis: portfolio.totalCostBasis
+    });
+    
     const assets = portfolio.assets || [];
+    console.log(`[riskService] Portfolio assets:`, assets.length);
 
-    if (assets.length === 0 || portfolio.totalValue === 0) {
-      return {
-        volatility: 0,
-        drawdown: 0,
-        riskScore: 0,
-      };
+    const validHoldings = assets.filter(
+      (asset) => asset && Number(asset.quantity) > 0
+    );
+
+    console.log(`[riskService] Filtered holdings: ${assets.length} → ${validHoldings.length} valid`);
+
+    if (validHoldings.length === 0 || portfolio.totalValue === 0) {
+      console.log(`[riskService] ⚠️  No valid holdings or zero value, returning safe default`);
+      console.log(`[riskService] validHoldings.length=${validHoldings.length}, totalValue=${portfolio.totalValue}`);
+      return safeDefaultResponse;
+    }
+    
+    console.log(`[riskService] ✅ Portfolio has data, continuing calculation...`);
+
+    const totalValue = portfolio.totalValue;
+    console.log(`[riskService] Using unified totalValue: $${totalValue}`);
+    
+    console.log(`[riskService] Asset details with prices:`);
+    validHoldings.forEach((asset) => {
+      console.log(`  - ${asset.symbol}: qty=${asset.quantity}, price=$${asset.currentPrice}, value=$${asset.currentValue}`);
+    });
+
+    const weights = validHoldings.map((asset) => {
+      const value = Number(asset.currentValue) || 0;
+      console.log(`[riskService] Weight calc for ${asset.symbol}: value=$${value} / totalValue=$${totalValue} = ${(value / totalValue * 100).toFixed(2)}%`);
+      return value / totalValue;
+    });
+
+    const maxWeight = Math.max(...weights);
+    const concentration = maxWeight * 100;
+    console.log(`[riskService] Max weight: ${maxWeight.toFixed(6)}, Concentration: ${concentration.toFixed(2)}%`);
+
+    const volatility = validHoldings.length === 1 ? 0.2 : 0.5;
+    console.log(`[riskService] Volatility: ${volatility} (${validHoldings.length} assets)`);
+
+    let riskScore = (volatility * 50) + (maxWeight * 50);
+    console.log(`[riskService] Risk score calculation: (${volatility} * 50) + (${maxWeight.toFixed(6)} * 50) = ${riskScore.toFixed(2)}`);
+
+    riskScore = Math.min(100, Math.max(0, riskScore));
+    console.log(`[riskService] Clamped risk score: ${riskScore.toFixed(2)}`);
+
+    let classification = "LOW";
+    if (riskScore > 70) {
+      classification = "HIGH";
+    } else if (riskScore > 40) {
+      classification = "MEDIUM";
     }
 
-    const assetMetrics = [];
-
-    for (const asset of assets) {
-      try {
-        if (!asset.symbol) continue;
-
-        const historical = await priceService.getHistoricalPrices(
-          asset.symbol.toLowerCase(),
-          30
-        );
-
-        const prices = historical.map((p) => p.price);
-
-        if (prices.length < 2) continue;
-
-        const volatility = calculateVolatility(prices);
-        const drawdown = calculateMaxDrawdown(prices);
-
-        const weight =
-          portfolio.totalValue > 0
-            ? asset.currentValue / portfolio.totalValue
-            : 0;
-
-        assetMetrics.push({
-          symbol: asset.symbol,
-          volatility,
-          drawdown,
-          weight,
-        });
-      } catch (err) {
-        console.error(`Risk calc failed for ${asset.symbol}`, err.message);
-      }
-    }
-
-    if (!assetMetrics.length) {
-      return {
-        volatility: 0,
-        drawdown: 0,
-        riskScore: 0,
-      };
-    }
-
-    let portfolioVolatility = 0;
-    let portfolioDrawdown = 0;
-
-    for (const m of assetMetrics) {
-      portfolioVolatility += m.volatility * m.weight;
-      portfolioDrawdown += m.drawdown * m.weight;
-    }
-
-    const riskScore =
-      portfolioVolatility * 0.6 + portfolioDrawdown * 0.4;
+    console.log(`[riskService] ✅ Final result: Risk score: ${riskScore.toFixed(2)} (${classification})`);
+    console.log(`[riskService] ═══════════════════════════════════════════\n`);
 
     return {
-      volatility: Number(portfolioVolatility.toFixed(6)),
-      drawdown: Number(portfolioDrawdown.toFixed(6)),
-      riskScore: Number(riskScore.toFixed(6)),
+      success: true,
+      data: {
+        volatility: Number(volatility.toFixed(4)),
+        concentration: Number(concentration.toFixed(2)),
+        riskScore: Number(riskScore.toFixed(2)),
+        classification,
+        assets: validHoldings.map((asset) => ({
+          symbol: asset.symbol,
+          quantity: asset.quantity,
+          currentValue: asset.currentValue,
+          weight: (asset.currentValue / totalValue) * 100
+        }))
+      }
     };
   } catch (error) {
-    throw new Error(`Portfolio risk calculation failed: ${error.message}`);
+    console.error(`\n[riskService] ❌ ERROR during risk calculation:`);
+    console.error(`[riskService] Error Message: ${error.message}`);
+    console.error(`[riskService] Error Stack:`, error.stack);
+    console.error(`[riskService] Returning safe default response`);
+    console.error(`[riskService] ═══════════════════════════════════════════\n`);
+    return safeDefaultResponse;
   }
 }

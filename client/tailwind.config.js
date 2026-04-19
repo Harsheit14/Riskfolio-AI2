@@ -13,6 +13,12 @@ export default {
         danger: "#ef4444",
         warning: "#f59e0b",
       },
+      animation: {
+        pulse: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        bounce: "bounce 1s infinite",
+      },
+      keyframes: {
+      },
     },
   },
   plugins: [],

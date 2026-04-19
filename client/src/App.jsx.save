@@ -1,0 +1,17 @@
+unction App() {
+  return (
+    <div style={{ color: "white", fontSize: "30px" }}>
+      APP IS WORKING 🚀
+    </div>
+  );
+}
+
+export default App;nction App() {
+  return (
+    <div style={{ color: "white", fontSize: "30px" }}>
+      APP IS WORKING 🚀
+    </div>
+  );
+}
+
+exp

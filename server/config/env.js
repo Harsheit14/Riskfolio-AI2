@@ -12,7 +12,17 @@ const env = {
     return dbUrl;
   },
   get JWT_SECRET() {
-    return process.env.JWT_SECRET || "default-secret-key";
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error("❌ JWT_SECRET must be set in environment variables");
+    }
+    return secret;
+  },
+  get JWT_EXPIRES_IN() {
+    return process.env.JWT_EXPIRES_IN || "7d";
+  },
+  get NODE_ENV() {
+    return process.env.NODE_ENV || "development";
   },
 };
 
