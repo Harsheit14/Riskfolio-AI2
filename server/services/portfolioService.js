@@ -35,7 +35,9 @@ export async function getUserHoldings(userId) {
     const holdingsMap = new Map();
 
     for (const tx of sortedTx) {
-      const { asset_id, type, quantity, price_at_transaction, created_at } = tx;
+      const { asset_id, type, created_at } = tx;
+      const quantity = parseFloat(tx.quantity) || 0;
+      const price_at_transaction = parseFloat(tx.price_at_transaction) || 0;
 
       if (!holdingsMap.has(asset_id)) {
         holdingsMap.set(asset_id, {
@@ -67,10 +69,13 @@ export async function getUserHoldings(userId) {
         });
       } else if (type === "SELL") {
         // Validate we have enough to sell
-        if (holding.quantity < quantity) {
-          throw new Error(
-            `Insufficient holdings for ${asset_id}. Have: ${holding.quantity}, Trying to sell: ${quantity}`
+        const currentQty = parseFloat(holding.quantity) || 0;
+        const sellQty = parseFloat(quantity) || 0;
+        if (currentQty < sellQty) {
+          console.warn(
+            `[getUserHoldings] Skipping insufficient SELL: asset_id=${asset_id}, Have: ${currentQty}, Trying to sell: ${sellQty}`
           );
+          continue;
         }
 
         // Use FIFO: sell from oldest buy lots first
@@ -80,12 +85,12 @@ export async function getUserHoldings(userId) {
         for (const lot of holding.buyLots) {
           if (remainingToSell <= 0) break;
 
-          const availableInLot = lot.quantity - lot.filledQty;
+          const availableInLot = parseFloat(lot.quantity) - parseFloat(lot.filledQty);
           const sellFromThisLot = Math.min(availableInLot, remainingToSell);
 
           if (sellFromThisLot > 0) {
             // Calculate cost of units being sold from this lot
-            costOfSoldUnits += sellFromThisLot * lot.price;
+            costOfSoldUnits += sellFromThisLot * parseFloat(lot.price);
             lot.filledQty += sellFromThisLot;
             remainingToSell -= sellFromThisLot;
           }
@@ -321,18 +326,17 @@ export async function getPortfolioPerformance(userId) {
  * Returns: { totalValue, totalInvested, totalPnL, assets: [...] }
  * 
  * Logic:
- * - Groups transactions by asset
- * - Calculates quantity (BUY - SELL, prevents negative)
- * - Calculates invested (sum of BUY transaction value)
- * - Fetches real-time prices
+ * - Uses getUserHoldings for proper FIFO calculation (sorted by date)
+ * - Fetches real-time prices for all holdings
  * - Calculates currentValue and pnl per asset
- * - Ignores assets with 0 quantity
+ * - Only includes assets with positive quantity
  */
 export async function getPortfolioSummary(userId) {
   try {
-    const transactions = await transactionRepository.getTransactionsByUser(userId);
+    // Use getUserHoldings for proper FIFO calculation (with date sorting)
+    const holdings = await getUserHoldings(userId);
 
-    if (!transactions || transactions.length === 0) {
+    if (Object.keys(holdings).length === 0) {
       return {
         totalValue: 0,
         totalInvested: 0,
@@ -340,55 +344,20 @@ export async function getPortfolioSummary(userId) {
         pnlPercentage: 0,
         assetCount: 0,
         assets: [],
+        allocation: [],
       };
-    }
-
-    // Get all assets for metadata
-    const assets = await assetRepository.getAllAssets();
-    const assetMetaMap = new Map();
-    assets.forEach((asset) => {
-      assetMetaMap.set(asset.id, asset);
-    });
-
-    // Group transactions by asset_id
-    const assetMap = new Map();
-
-    for (const tx of transactions) {
-      const { asset_id, type, quantity, price_at_transaction } = tx;
-
-      if (!assetMap.has(asset_id)) {
-        assetMap.set(asset_id, {
-          asset_id,
-          quantity: 0,
-          totalInvested: 0,
-        });
-      }
-
-      const assetData = assetMap.get(asset_id);
-
-      if (type === "BUY") {
-        assetData.quantity += quantity;
-        assetData.totalInvested += quantity * price_at_transaction;
-      } else if (type === "SELL") {
-        assetData.quantity -= quantity;
-        // Don't subtract from invested - invested is cumulative cost basis
-      }
     }
 
     // Prepare coin IDs for price fetching
     const coinIdsToFetch = [];
     const coinIdMap = {};
 
-    for (const [assetId, assetData] of assetMap.entries()) {
-      // Only include assets with positive quantity
-      if (assetData.quantity > 0) {
-        const asset = assetMetaMap.get(assetId);
-        if (asset && asset.coingecko_id) {
-          coinIdsToFetch.push(asset.coingecko_id);
-          coinIdMap[asset.coingecko_id] = assetId;
-        }
+    Object.entries(holdings).forEach(([symbol, meta]) => {
+      if (meta.coingeckoId) {
+        coinIdsToFetch.push(meta.coingeckoId);
+        coinIdMap[meta.coingeckoId] = symbol;
       }
-    }
+    });
 
     // Fetch current prices
     let prices = {};
@@ -396,50 +365,42 @@ export async function getPortfolioSummary(userId) {
       prices = await priceService.getCurrentPrices(coinIdsToFetch);
     }
 
-    // Build asset results - only include assets with quantity > 0
+    // Build asset results
     const assetResults = [];
     let totalValue = 0;
     let totalInvested = 0;
     let totalPnL = 0;
 
-    for (const [assetId, assetData] of assetMap.entries()) {
-      // Skip if quantity is 0 or negative
-      if (assetData.quantity <= 0) {
-        continue;
-      }
-
-      const asset = assetMetaMap.get(assetId);
-      if (!asset) {
-        continue;
+    Object.entries(holdings).forEach(([symbol, meta]) => {
+      // Only include assets with positive quantity
+      if (meta.quantity <= 0) {
+        return;
       }
 
       // Get current price
-      const currentPrice = prices[asset.coingecko_id] || 0;
+      const currentPrice = prices[meta.coingeckoId] || 0;
 
       // Calculate values
-      const currentValue = assetData.quantity * currentPrice;
-      const avgBuyPrice = assetData.totalInvested > 0
-        ? round2(assetData.totalInvested / assetData.quantity)
-        : 0;
-      const pnl = currentValue - assetData.totalInvested;
-      const pnlPercentage = assetData.totalInvested > 0
-        ? round2((pnl / assetData.totalInvested) * 100)
+      const currentValue = meta.quantity * currentPrice;
+      const pnl = currentValue - meta.totalCostBasis;
+      const pnlPercentage = meta.totalCostBasis > 0
+        ? round2((pnl / meta.totalCostBasis) * 100)
         : 0;
 
       totalValue += currentValue;
-      totalInvested += assetData.totalInvested;
+      totalInvested += meta.totalCostBasis;
       totalPnL += pnl;
 
       assetResults.push({
-        symbol: asset.symbol,
-        quantity: round2(assetData.quantity),
-        avgBuyPrice,
+        symbol,
+        quantity: round2(meta.quantity),
+        avgBuyPrice: round2(meta.avgBuyPrice),
         currentPrice: round2(currentPrice),
         currentValue: round2(currentValue),
         pnl: round2(pnl),
         pnlPercentage,
       });
-    }
+    });
 
     // Sort by currentValue descending
     assetResults.sort((a, b) => b.currentValue - a.currentValue);
@@ -454,8 +415,6 @@ export async function getPortfolioSummary(userId) {
 
     // Calculate allocation percentages
     const allocation = assetResults.map((asset) => {
-      // allocation = (asset.currentValue / totalValue) × 100
-      // If totalValue = 0, allocation = 0 (prevent division by zero)
       const percentage = totalValue > 0
         ? round2((asset.currentValue / totalValue) * 100)
         : 0;
@@ -533,7 +492,8 @@ export async function getPortfolioTrend(userId, days = 30) {
     const holdingsMap = new Map(); // assetId → { quantity, coingeckoId, symbol }
 
     for (const tx of transactions) {
-      const { asset_id, type, quantity } = tx;
+      const { asset_id, type } = tx;
+      const quantity = parseFloat(tx.quantity) || 0;
 
       if (!holdingsMap.has(asset_id)) {
         const asset = assetMetaMap.get(asset_id);
@@ -557,7 +517,7 @@ export async function getPortfolioTrend(userId, days = 30) {
 
     // Step 4: Keep only assets with positive quantity
     const activeAssets = Array.from(holdingsMap.entries())
-      .filter(([, holding]) => holding.quantity > 0)
+      .filter(([, holding]) => parseFloat(holding.quantity) > 0)
       .map(([assetId, holding]) => ({
         assetId,
         ...holding,

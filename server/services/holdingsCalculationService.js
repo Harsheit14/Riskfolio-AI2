@@ -59,7 +59,7 @@ export async function getHoldings(userId) {
     const transactions = await transactionRepository.getTransactionsByUser(userId);
 
     if (!transactions || transactions.length === 0) {
-      return {};
+      return [];
     }
 
     const assets = await assetRepository.getAllAssets();
@@ -92,7 +92,16 @@ export async function getHoldings(userId) {
       };
     }
 
-    return result;
+    const holdingsArray = Object.entries(result).map(([symbol, data]) => ({
+      symbol,
+      quantity: data.quantity,
+      totalCostBasis: data.totalCostBasis,
+      avgBuyPrice: data.avgBuyPrice,
+      assetId: data.assetId,
+      coingeckoId: data.coingeckoId,
+    }));
+
+    return holdingsArray;
   } catch (error) {
     console.error(`[holdingsCalculationService] getHoldings error:`, error.message);
     throw new Error(`Failed to calculate holdings: ${error.message}`);
@@ -100,7 +109,7 @@ export async function getHoldings(userId) {
 }
 
 async function getPricesForHoldings(holdings) {
-  const coingeckoIds = Object.values(holdings)
+  const coingeckoIds = holdings
     .map((h) => h.coingeckoId)
     .filter(Boolean);
 
@@ -121,9 +130,9 @@ export async function getPortfolioWithValues(userId) {
   try {
     const holdings = await getHoldings(userId);
 
-    if (Object.keys(holdings).length === 0) {
+    if (!holdings || holdings.length === 0) {
       return {
-        holdings: {},
+        holdings: [],
         assets: [],
         totalValue: 0,
         totalCostBasis: 0,
@@ -139,13 +148,12 @@ export async function getPortfolioWithValues(userId) {
     let totalCostBasis = 0;
     const assets = [];
 
-    for (const symbol in holdings) {
-      const h = holdings[symbol];
+    for (const h of holdings) {
       const currentPrice = prices[h.coingeckoId] || 0;
 
       if (!currentPrice || currentPrice <= 0) {
         console.warn(
-          `⚠️  WARNING: No valid price for ${symbol} (${h.coingeckoId}): ${currentPrice}`
+          `⚠️  WARNING: No valid price for ${h.symbol} (${h.coingeckoId}): ${currentPrice}`
         );
       }
 
@@ -158,7 +166,7 @@ export async function getPortfolioWithValues(userId) {
       totalCostBasis += h.totalCostBasis;
 
       assets.push({
-        symbol,
+        symbol: h.symbol,
         quantity: h.quantity,
         avgBuyPrice: h.avgBuyPrice,
         currentPrice: round2(currentPrice || 0),
@@ -215,12 +223,12 @@ export async function getAllocation(userId) {
 
 export async function getHoldingsList(userId) {
   const holdings = await getHoldings(userId);
-  return Object.values(holdings);
+  return holdings;
 }
 
 export async function getAssetCount(userId) {
   const holdings = await getHoldings(userId);
-  return Object.keys(holdings).length;
+  return holdings.length;
 }
 
 export async function getTotalPortfolioValue(userId) {

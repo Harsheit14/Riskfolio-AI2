@@ -48,10 +48,13 @@ export function calculateHoldings(transactions) {
     if (
       !tx ||
       !tx.asset_symbol ||
-      !tx.type ||
-      typeof tx.quantity !== "number" ||
-      tx.quantity <= 0
+      !tx.type
     ) {
+      continue;
+    }
+
+    const quantity = parseFloat(tx.quantity) || 0;
+    if (quantity <= 0) {
       continue;
     }
 
@@ -69,9 +72,9 @@ export function calculateHoldings(transactions) {
     // Apply transaction
     let current = holdingsMap.get(symbol);
     if (tx.type === "BUY") {
-      current += tx.quantity;
+      current += quantity;
     } else if (tx.type === "SELL") {
-      current -= tx.quantity;
+      current -= quantity;
     }
 
     // Update map

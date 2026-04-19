@@ -77,7 +77,9 @@ async function fetchDashboardData(userId) {
 
     // Calculate PnL (simplified: total invested vs current value)
     const totalCost = transactions.reduce((sum, tx) => {
-      const cost = tx.type === "BUY" ? tx.quantity * tx.price : -tx.quantity * tx.price;
+      const qty = parseFloat(tx.quantity) || 0;
+      const price = parseFloat(tx.price) || 0;
+      const cost = tx.type === "BUY" ? qty * price : -qty * price;
       return sum + cost;
     }, 0);
     const pnl = totalValue - totalCost;
